@@ -1,0 +1,16 @@
+
+output "instance_id" {
+  value = aws_instance.main.id
+}
+
+output "instance_public_ip" {
+  value = aws_instance.main.public_ip
+}
+
+output "instance_private_ip" {
+  value = aws_instance.main.private_ip
+}
+
+output "security_group_id" {
+  value = aws_security_group.ec2_sg.id
+}

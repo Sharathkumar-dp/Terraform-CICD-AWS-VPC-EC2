@@ -1,0 +1,204 @@
+
+name: Terraform AWS CI/CD
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - master
+
+  pull_request:
+    branches:
+      - master
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TF_VERSION: "1.10.5"
+  AWS_REGION: "ap-southeast-2"
+  TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+
+jobs:
+
+  # ==========================================
+  # JOB 1: TERRAFORM PLAN
+  # ==========================================
+
+  terraform-plan:
+    name: Terraform Plan
+
+    if: |
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Format
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Init
+        run: |
+          terraform init -input=false -lockfile=readonly \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="key=terraform/awsec2/terraform.tfstate" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Generate Readable Plan
+        run: terraform show -no-color tfplan > tfplan.txt
+
+      - name: Save Commit SHA
+        run: echo "$GITHUB_SHA" > commit.txt
+
+      - name: Publish Plan Summary
+        run: |
+          {
+            echo "# Terraform Plan Review"
+            echo ""
+            echo "**Branch:** $GITHUB_REF_NAME"
+            echo ""
+            echo "**Commit:** $GITHUB_SHA"
+            echo ""
+            echo "**AWS Region:** $AWS_REGION"
+            echo ""
+            echo '```terraform'
+            cat tfplan.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: |
+            tfplan
+            tfplan.txt
+            commit.txt
+          retention-days: 5
+          if-no-files-found: error
+
+  # ==========================================
+  # JOB 2: TERRAFORM APPLY
+  # Runs only after successful master push plan
+  # ==========================================
+
+  terraform-apply:
+    name: Terraform Apply
+
+    needs: terraform-plan
+
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/master'
+
+    runs-on: ubuntu-latest
+
+    environment: terraform-production
+
+    permissions:
+      contents: read
+
+    concurrency:
+      group: terraform-production
+      cancel-in-progress: false
+
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan
+          path: plan-artifact
+
+      - name: Verify Plan Commit
+        run: |
+          set -euo pipefail
+
+          PLAN_SHA=$(cat plan-artifact/commit.txt)
+
+          echo "Plan Commit: $PLAN_SHA"
+          echo "Current Commit: $GITHUB_SHA"
+
+          if [ "$PLAN_SHA" != "$GITHUB_SHA" ]; then
+            echo "ERROR: Plan commit mismatch."
+            exit 1
+          fi
+
+      - name: Terraform Init
+        run: |
+          terraform init -input=false -lockfile=readonly \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="key=terraform/awsec2/terraform.tfstate" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform Apply
+        run: |
+          terraform apply -input=false -auto-approve plan-artifact/tfplan
+
+      - name: Publish Deployment Summary
+        run: |
+          {
+            echo "# Terraform Deployment Successful"
+            echo ""
+            echo "**Branch:** $GITHUB_REF_NAME"
+            echo ""
+            echo "**Commit:** $GITHUB_SHA"
+            echo ""
+            echo "**AWS Region:** $AWS_REGION"
+            echo ""
+            echo "Terraform deployment completed successfully."
+          } >> "$GITHUB_STEP_SUMMARY"
