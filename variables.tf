@@ -41,11 +41,6 @@ variable "private_subnet_cidr" {
   default     = "10.0.2.0/24"
 }
 
-variable "admin_cidr" {
-  description = "Trusted public IP CIDR allowed to access SSH and RDP. Use your public IP/32."
-  type        = string
-}
-
 variable "tags" {
   description = "Common AWS resource tags"
   type        = map(string)
