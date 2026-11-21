@@ -22,7 +22,6 @@ module "ec2" {
 
   vpc_id     = module.network.vpc_id
   subnet_id  = module.network.public_subnet_id
-  admin_cidr = var.admin_cidr
 
   tags = var.tags
 }
