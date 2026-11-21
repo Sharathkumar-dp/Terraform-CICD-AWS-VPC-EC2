@@ -1,180 +1,158 @@
-# Terraform CI/CD with GitHub Actions: Globally Autoscaling Web Application
+AWS Infrastructure Deployment Using Terraform and GitHub Actions
+📌 Project Overview
 
-This repository demonstrates how to build a CI/CD pipeline using GitHub Actions to automate the deployment of a globally autoscaling web application on Google Cloud Platform (GCP) using Terraform.
+This project automates the deployment of AWS infrastructure using Terraform and GitHub Actions CI/CD pipeline.
 
-**Project Structure:**
+The infrastructure is provisioned using reusable Terraform internal modules, making the code modular, scalable, and easy to maintain.
 
-The project deploys a simple "Interstellar" themed web application across two regions (`us-central1` and `europe-west2`) using:
+AWS authentication is configured using an IAM user Access Key and Secret Access Key, securely stored as GitHub Actions Secrets.
 
-*   **Managed Instance Groups (MIGs):** For autoscaling and resilience.
-*   **Global HTTPS Load Balancer:** For traffic distribution and SSL termination.
-*   **Cloud NAT:** For providing internet access to instances without public IPs.
-*   **Google Cloud Storage:** To store the static website files.
-*   **Cloud DNS:** To manage the DNS records.
+🏗️ Architecture
 
-**CI/CD Pipeline:**
+The GitHub Actions pipeline automates the deployment of the following AWS resources:
 
-The GitHub Actions workflow automates the following:
+AWS VPC
+Public and/or Private Subnets
+Internet Gateway
+Route Tables and Route Table Associations
+Security Groups
+EC2 Instance
+🛠️ Technologies Used
+Technology	Purpose
+AWS	Cloud Infrastructure
+Terraform	Infrastructure as Code (IaC)
+GitHub	Source Code Management
+GitHub Actions	CI/CD Automation
+AWS IAM	Authentication and Access Management
+Terraform Modules	Reusable Infrastructure Components
+📂 Project Structure
+text
+.
+├── .github/
+│   └── workflows/
+│       └── terraform.yml
+│
+├── modules/
+│   ├── vpc/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   │
+│   └── ec2/
+│       ├── main.tf
+│       ├── variables.tf
+│       └── outputs.tf
+│
+├── main.tf
+├── variables.tf
+├── outputs.tf
+├── provider.tf
+├── terraform.tfvars
+├── versions.tf
+└── README.md
 
-*   **`terraform init`:** Initializes the Terraform working directory.
-*   **`terraform plan`:** Generates a Terraform plan on pull requests. The plan is also added as a comment to the pull request.
-*   **`terraform apply`:** Applies the Terraform plan automatically when changes are merged into the `main` branch.
 
-## Prerequisites
+Note: Update the directory structure according to your actual repository.
 
-Before you begin, make sure you have the following:
+⚙️ Prerequisites
 
-1.  **Google Cloud Account:** A Google Cloud account with billing enabled.
-2.  **Google Cloud Project:** Create a project in the Google Cloud Console. Note down your Project ID.
-3.  **Service Account:**
-    *   Create a service account in your Google Cloud project.
-    *   Grant the following roles to your service account:
-        *   `roles/compute.networkAdmin`
-        *   `roles/compute.instanceAdmin.v1`
-        *   `roles/compute.securityAdmin`
-        *   `roles/storage.admin`
-        *   `roles/dns.admin`
-        *   `roles/iam.serviceAccountKeyAdmin`
-        *   `roles/iam.serviceAccountUser`
-    *   Download the service account key as a JSON file and store it securely. You'll need to add it as a GitHub secret.
+Before running this project, ensure you have:
 
-4.  **Enable APIs:**
-    *   Make sure the following APIs are enabled for your project:
-        *   Compute Engine API
-        *   Cloud DNS API
-        *   Cloud Resource Manager API
-        *   Identity and Access Management (IAM) API
-        *   Service Usage API
+An AWS account.
+An IAM user with the required AWS permissions.
+AWS Access Key ID and Secret Access Key.
+A GitHub account.
+Terraform installed (for local execution).
+Git installed.
+🔐 AWS Authentication Configuration
 
-5.  **gcloud CLI:** Install and configure the Google Cloud CLI on your local machine. ([https://cloud.google.com/sdk/docs/install](https://cloud.google.com/sdk/docs/install))
-6.  **Terraform:** Install Terraform (v1.6.6 or later) on your local machine. ([https://developer.hashicorp.com/terraform/tutorials/gcp-get-started/install-cli](https://developer.hashicorp.com/terraform/tutorials/gcp-get-started/install-cli))
-7.  **GitHub Account:** A GitHub account to fork and clone this repository.
-8.  **Cloud DNS:**
-    *   Create a public managed DNS zone in Cloud DNS for your domain (e.g., `google-cloud-pocs.dev`).
+AWS authentication is configured using IAM user credentials stored securely in GitHub repository secrets.
 
-## Getting Started
+Navigate to:
 
-1.  **Fork the Repository:**
-    *   Fork this repository (`https://github.com/SamPriyadarshi/terraform-ci-cd`) to your own GitHub account.
+GitHub Repository → Settings → Secrets and variables → Actions → New repository secret
 
-2.  **Clone the Repository:**
+Create the following secrets:
 
-    ```bash
-    git clone https://github.com/SamPriyadarshi/terraform-ci-cd.git
-    cd terraform-ci-cd
-    ```
+Secret Name	Description
+AWS_ACCESS_KEY_ID	AWS IAM User Access Key
+AWS_SECRET_ACCESS_KEY	AWS IAM User Secret Access Key
+AWS_REGION	AWS deployment region
 
-3.  **Create a Google Cloud Storage Bucket for Terraform State:**
+The GitHub Actions workflow uses these secrets to authenticate with AWS.
 
-    *   Create a GCS bucket to store your Terraform state remotely. You can use the `gcloud` CLI:
+Important: Never hardcode AWS credentials in Terraform files or commit them to GitHub.
 
-    ```bash
-    gsutil mb -b on -l us-central1 gs://<your-unique-bucket-name>
-    gsutil versioning set on gs://<your-unique-bucket-name>
-    ```
+🚀 GitHub Actions CI/CD Pipeline
 
-    *   Replace `<your-unique-bucket-name>` with a globally unique name for your bucket (e.g., `your-project-name-tfstate`).
+The GitHub Actions workflow automates Terraform infrastructure deployment.
 
-4.  **Update Terraform Backend Configuration:**
+Pipeline Execution Steps
+Developer pushes Terraform code to the GitHub repository.
+GitHub Actions workflow gets triggered.
+GitHub runner checks out the repository.
+Terraform is initialized using terraform init.
+Terraform configuration is validated using terraform validate.
+Terraform execution plan is generated using terraform plan.
+Terraform applies the configuration using terraform apply.
+AWS infrastructure is successfully provisioned.
+Terraform Commands Used
+bash
+terraform init
+terraform fmt -check
+terraform validate
+terraform plan
+terraform apply -auto-approve
 
-    *   Modify the `main.tf` file and update the `backend "gcs"` block with your bucket name:
+🔄 Deployment Process
+Step 1: Clone the Repository
+bash
+git clone <YOUR_GITHUB_REPOSITORY_URL>
+cd <YOUR_REPOSITORY_NAME>
 
-    ```terraform
-    terraform {
-      backend "gcs" {
-        bucket = "your-unique-bucket-name"  # Replace with your bucket name
-        prefix = "terraform/state"
-      }
-      # ... rest of the configuration ...
-    }
-    ```
+Step 2: Configure GitHub Secrets
 
-5.  **Create `terraform.tfvars`:**
+Add the AWS credentials and AWS region under GitHub Actions Secrets.
 
-    *   Create a file named `terraform.tfvars` in the root directory of the project.
-    *   Populate it with the required variables. Here's an example:
+Step 3: Push Code to GitHub
+bash
+git add .
+git commit -m "Initial Terraform infrastructure deployment"
+git push origin main
 
-    ```
-    project_id              = "your-gcp-project-id"  # Replace with your Project ID
-    bucket_name             = "your-website-bucket-name"  # Replace with a unique bucket name for website files
-    dns_zone_name           = "google-cloud-pocs-dev" # Replace with your DNS zone name
-    dns_managed_zone_name = "google-cloud-pocs-dev"  # Replace with your DNS managed zone name
-    ```
+Step 4: Execute GitHub Actions Pipeline
+Navigate to the GitHub repository.
+Select the Actions tab.
+Open the Terraform deployment workflow.
+Monitor the pipeline execution.
+Verify that all Terraform stages complete successfully.
+Step 5: Verify AWS Resources
 
-6.  **Add GitHub Secrets:**
+Log in to the AWS Management Console and verify that the following resources have been created:
 
-    *   In your forked GitHub repository, go to "Settings" -> "Secrets and variables" -> "Actions".
-    *   Create the following repository secrets:
-        *   **`GCP_CREDENTIALS`:** Paste the entire contents of your service account JSON key file.
+VPC and associated networking resources.
+Security Groups.
+EC2 instance.
+📤 Terraform Outputs
 
-7.  **Update the `startup_script.tpl`:**
+Terraform outputs can be used to display important infrastructure information, such as:
 
-    *   Modify the `startup_script.tpl` file inside `instance_template` module to update the bucket name. Replace `your-website-bucket-name` with the name of the bucket you created in step 5.
+VPC ID
+Subnet IDs
+EC2 Instance ID
+EC2 Public IP Address
+🧹 Infrastructure Cleanup
 
-8.  **Push Changes to your Fork:**
-    *   Commit and push the changes you made to your forked repository:
-    ```bash
-    git add .
-    git commit -m "Configure Terraform backend and variables"
-    git push origin main
-    ```
+To destroy the infrastructure created by Terraform, execute:
 
-## Workflow Overview
-
-The repository contains a GitHub Actions workflow (`.github/workflows/terraform.yml`) that automates the Terraform deployment process:
-
-*   **On Pull Request:**
-    *   `terraform init`
-    *   `terraform plan` (saved as an artifact)
-    *   Adds a comment to the PR with the plan summary.
-*   **On Push to `main`:**
-    *   `terraform init`
-    *   `terraform apply` (using the saved plan from the pull request, if applicable)
-
-## Triggering the Workflow
-
-1.  **Create a Feature Branch:**
-    *   Create a new branch from `main` for your changes:
-
-        ```bash
-        git checkout -b my-feature-branch
-        ```
-
-2.  **Make Changes:**
-    *   Make your desired changes to the Terraform code (e.g., modify website content, change instance types, etc.).
-
-3.  **Commit and Push:**
-    *   Commit your changes and push them to your feature branch:
-
-        ```bash
-        git add .
-        git commit -m "Your commit message"
-        git push origin my-feature-branch
-        ```
-
-4.  **Create a Pull Request:**
-    *   Create a pull request on GitHub from your feature branch to the `main` branch.
-
-5.  **Review Terraform Plan:**
-    *   The GitHub Actions workflow will automatically run `terraform init` and `terraform plan`.
-    *   Review the plan in the workflow logs and in the PR comment added by the workflow.
-
-6.  **Merge Pull Request:**
-    *   Once the plan is approved, merge the pull request into `main`.
-
-7.  **Terraform Apply:**
-    *   The GitHub Actions workflow will automatically run `terraform apply` to deploy the changes to your Google Cloud project.
-
-## Accessing the Web Application
-
-After the workflow has successfully completed:
-
-*   You can find the external IP address of the load balancer in the workflow logs or in the Google Cloud Console (Compute Engine -> Load balancing).
-*   You can also access the application using the DNS name configured in Cloud DNS (e.g., `galactic-empire.google-cloud-pocs.dev`).
-
-## Cleaning Up
-
-To delete the resources created by Terraform, run the following command **locally**:
-
-```bash
+bash
 terraform destroy
+
+
+For automated cleanup, configure a separate GitHub Actions workflow with appropriate approval and access controls.
+
+Warning: Destroying infrastructure will delete the resources managed by the Terraform configuration.
+
+🔒 Security Best Practices
+Store AWS credentials only in GitHub Actions Secrets.
+Never commit AWS Access
