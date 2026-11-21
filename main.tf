@@ -20,8 +20,8 @@ module "ec2" {
   instance_name = var.instance_name
   key_name      = var.key_name
 
-  vpc_id     = module.network.vpc_id
-  subnet_id  = module.network.public_subnet_id
+  vpc_id    = module.network.vpc_id
+  subnet_id = module.network.public_subnet_id
 
   tags = var.tags
 }
