@@ -8,6 +8,7 @@ variable "aws_region" {
 variable "ami_id" {
   description = "AWS EC2 AMI ID for the selected region"
   type        = string
+  default     = "ami-09a2f74ce8538e414"
 }
 
 variable "instance_type" {
@@ -64,4 +65,5 @@ variable "tags" {
 variable "key_name" {
   description = "Existing AWS EC2 key pair name"
   type        = string
+  default     = "my-aws-keypair"
 }
