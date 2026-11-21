@@ -29,8 +29,3 @@ variable "tags" {
 variable "key_name" {
   type = string
 }
-
-variable "admin_cidr" {
-  description = "Trusted public IP CIDR allowed to access SSH and RDP. Use your public IP/32."
-  type        = string
-}

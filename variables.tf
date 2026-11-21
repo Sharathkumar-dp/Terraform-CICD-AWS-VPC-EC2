@@ -44,11 +44,6 @@ variable "private_subnet_cidr" {
 variable "admin_cidr" {
   description = "Trusted public IP CIDR allowed to access SSH and RDP. Use your public IP/32."
   type        = string
-
-  validation {
-    condition     = can(cidrhost(var.admin_cidr, 0))
-    error_message = "Provide a valid CIDR, such as 203.0.113.10/32."
-  }
 }
 
 variable "tags" {
